@@ -194,6 +194,11 @@ define([
   };
 
   Search.prototype.searchRemoveChoice = function (decorated, item) {
+
+    // Bugfix: Identify object was removed 'backspace'
+    item.removedByChoice = true;
+    // Bugfix End.
+
     this.trigger('unselect', {
       data: item
     });

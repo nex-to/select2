@@ -27,6 +27,13 @@ define([
     MultipleSelection.__super__.bind.apply(this, arguments);
 
     this.$selection.on('click', function (evt) {
+
+      // Bugfix: Don't open when item was removed.
+      if (event && $(event.srcElement).hasClass('select2-selection__choice__remove')) {
+        return;
+      }
+      // BugFix End
+
       self.trigger('toggle', {
         originalEvent: evt
       });
