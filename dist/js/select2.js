@@ -30,13 +30,11 @@
 var S2;(function () { if (!S2 || !S2.requirejs) {
 if (!S2) { S2 = {}; } else { require = S2; }
 /**
- * @license almond 0.3.1 Copyright (c) 2011-2014, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/almond for details
+ * @license almond 0.3.2 Copyright jQuery Foundation and other contributors.
+ * Released under MIT license, http://github.com/requirejs/almond/LICENSE
  */
 //Going sloppy to avoid 'use strict' string cost, but strict practices should
 //be followed.
-/*jslint sloppy: true */
 /*global setTimeout: false */
 
 var requirejs, require, define;
@@ -64,60 +62,58 @@ var requirejs, require, define;
      */
     function normalize(name, baseName) {
         var nameParts, nameSegment, mapValue, foundMap, lastIndex,
-            foundI, foundStarMap, starI, i, j, part,
+            foundI, foundStarMap, starI, i, j, part, normalizedBaseParts,
             baseParts = baseName && baseName.split("/"),
             map = config.map,
             starMap = (map && map['*']) || {};
 
         //Adjust any relative paths.
-        if (name && name.charAt(0) === ".") {
-            //If have a base name, try to normalize against it,
-            //otherwise, assume it is a top-level require that will
-            //be relative to baseUrl in the end.
-            if (baseName) {
-                name = name.split('/');
-                lastIndex = name.length - 1;
+        if (name) {
+            name = name.split('/');
+            lastIndex = name.length - 1;
 
-                // Node .js allowance:
-                if (config.nodeIdCompat && jsSuffixRegExp.test(name[lastIndex])) {
-                    name[lastIndex] = name[lastIndex].replace(jsSuffixRegExp, '');
-                }
+            // If wanting node ID compatibility, strip .js from end
+            // of IDs. Have to do this here, and not in nameToUrl
+            // because node allows either .js or non .js to map
+            // to same file.
+            if (config.nodeIdCompat && jsSuffixRegExp.test(name[lastIndex])) {
+                name[lastIndex] = name[lastIndex].replace(jsSuffixRegExp, '');
+            }
 
-                //Lop off the last part of baseParts, so that . matches the
-                //"directory" and not name of the baseName's module. For instance,
-                //baseName of "one/two/three", maps to "one/two/three.js", but we
-                //want the directory, "one/two" for this normalization.
-                name = baseParts.slice(0, baseParts.length - 1).concat(name);
+            // Starts with a '.' so need the baseName
+            if (name[0].charAt(0) === '.' && baseParts) {
+                //Convert baseName to array, and lop off the last part,
+                //so that . matches that 'directory' and not name of the baseName's
+                //module. For instance, baseName of 'one/two/three', maps to
+                //'one/two/three.js', but we want the directory, 'one/two' for
+                //this normalization.
+                normalizedBaseParts = baseParts.slice(0, baseParts.length - 1);
+                name = normalizedBaseParts.concat(name);
+            }
 
-                //start trimDots
-                for (i = 0; i < name.length; i += 1) {
-                    part = name[i];
-                    if (part === ".") {
-                        name.splice(i, 1);
-                        i -= 1;
-                    } else if (part === "..") {
-                        if (i === 1 && (name[2] === '..' || name[0] === '..')) {
-                            //End of the line. Keep at least one non-dot
-                            //path segment at the front so it can be mapped
-                            //correctly to disk. Otherwise, there is likely
-                            //no path mapping for a path starting with '..'.
-                            //This can still fail, but catches the most reasonable
-                            //uses of ..
-                            break;
-                        } else if (i > 0) {
-                            name.splice(i - 1, 2);
-                            i -= 2;
-                        }
+            //start trimDots
+            for (i = 0; i < name.length; i++) {
+                part = name[i];
+                if (part === '.') {
+                    name.splice(i, 1);
+                    i -= 1;
+                } else if (part === '..') {
+                    // If at the start, or previous value is still ..,
+                    // keep them so that when converted to a path it may
+                    // still work when converted to a path, even though
+                    // as an ID it is less than ideal. In larger point
+                    // releases, may be better to just kick out an error.
+                    if (i === 0 || (i === 1 && name[2] === '..') || name[i - 1] === '..') {
+                        continue;
+                    } else if (i > 0) {
+                        name.splice(i - 1, 2);
+                        i -= 2;
                     }
                 }
-                //end trimDots
-
-                name = name.join("/");
-            } else if (name.indexOf('./') === 0) {
-                // No baseName, so this is ID is resolved relative
-                // to baseUrl, pull off the leading dot.
-                name = name.substring(2);
             }
+            //end trimDots
+
+            name = name.join('/');
         }
 
         //Apply map config if available.
@@ -1564,6 +1560,14 @@ S2.define('select2/selection/multiple',[
     MultipleSelection.__super__.bind.apply(this, arguments);
 
     this.$selection.on('click', function (evt) {
+
+      // Bugfix: Don't open when item was removed.
+      if (evt && $(evt.srcElement)
+      .hasClass('select2-selection__choice__remove')) {
+        return;
+      }
+      // BugFix End
+
       self.trigger('toggle', {
         originalEvent: evt
       });
@@ -1989,6 +1993,11 @@ S2.define('select2/selection/search',[
   };
 
   Search.prototype.searchRemoveChoice = function (decorated, item) {
+
+    // Bugfix: Identify object was removed 'backspace'
+    item.removedByChoice = true;
+    // Bugfix End.
+
     this.trigger('unselect', {
       data: item
     });
@@ -3436,6 +3445,12 @@ S2.define('select2/data/ajax',[
 
         callback(results);
       }, function () {
+        // Attempt to detect if a request was aborted
+        // Only works if the transport exposes a status property
+        if ($request.status && $request.status === '0') {
+          return;
+        }
+
         self.trigger('results:message', {
           message: 'errorLoading'
         });
@@ -3607,6 +3622,29 @@ S2.define('select2/data/tokenizer',[
   Tokenizer.prototype.query = function (decorated, params, callback) {
     var self = this;
 
+    function createAndSelect (data) {
+      // Normalize the data object so we can use it for checks
+      var item = self._normalizeItem(data);
+
+      // Check if the data object already exists as a tag
+      // Select it if it doesn't
+      var $existingOptions = self.$element.find('option').filter(function () {
+        return $(this).val() === item.id;
+      });
+
+      // If an existing option wasn't found for it, create the option
+      if (!$existingOptions.length) {
+        var $option = self.option(item);
+        $option.attr('data-select2-tag', true);
+
+        self._removeOldTags();
+        self.addOptions([$option]);
+      }
+
+      // Select the item, now that we know there is an option for it
+      select(item);
+    }
+
     function select (data) {
       self.trigger('select', {
         data: data
@@ -3615,7 +3653,7 @@ S2.define('select2/data/tokenizer',[
 
     params.term = params.term || '';
 
-    var tokenData = this.tokenizer(params, this.options, select);
+    var tokenData = this.tokenizer(params, this.options, createAndSelect);
 
     if (tokenData.term !== params.term) {
       // Replace the search term if we have the search box
@@ -4229,7 +4267,7 @@ S2.define('select2/dropdown/attachBody',[
 
     if (newDirection == 'above' ||
       (isCurrentlyAbove && newDirection !== 'below')) {
-      css.top = container.top - dropdown.height;
+      css.top = container.top - parentOffset.top - dropdown.height;
     }
 
     if (newDirection != null) {
@@ -4251,6 +4289,7 @@ S2.define('select2/dropdown/attachBody',[
 
     if (this.options.get('dropdownAutoWidth')) {
       css.minWidth = css.width;
+      css.position = 'relative';
       css.width = 'auto';
     }
 
@@ -4339,6 +4378,35 @@ S2.define('select2/dropdown/selectOnClose',[
     ) {
       return;
     }
+
+    // Bugfix
+    var event;
+    // do not readd last item although
+    // it was removed by click on 'x'
+    if (event && event.srcElement.classList
+      .contains('select2-selection__choice__remove'))
+    {
+      this.trigger('blur', {
+        data: data
+      });
+      return;
+    }
+
+    // Do not readd item which just
+    // got edited by backspace
+    if (data && data.removedByChoice) {
+      return;
+    }
+
+    // ignore click outside of select2 and
+    // do not add selected item unless
+    // it's type text!
+    if (data && data.selected !== undefined &&
+      !data.selected &&
+      event.buttons !== undefined) {
+      return;
+    }
+    // End bugfix
 
     this.trigger('select', {
         data: data
@@ -5524,6 +5592,7 @@ S2.define('jquery.select2',[
         return this;
       } else if (typeof options === 'string') {
         var ret;
+        var args = Array.prototype.slice.call(arguments, 1);
 
         this.each(function () {
           var instance = $(this).data('select2');
@@ -5534,8 +5603,6 @@ S2.define('jquery.select2',[
               'element that is not using Select2.'
             );
           }
-
-          var args = Array.prototype.slice.call(arguments, 1);
 
           ret = instance[options].apply(instance, args);
         });
