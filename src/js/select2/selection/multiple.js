@@ -29,7 +29,8 @@ define([
     this.$selection.on('click', function (evt) {
 
       // Bugfix: Don't open when item was removed.
-      if (event && $(event.srcElement).hasClass('select2-selection__choice__remove')) {
+      if (evt && $(evt.srcElement)
+      .hasClass('select2-selection__choice__remove')) {
         return;
       }
       // BugFix End

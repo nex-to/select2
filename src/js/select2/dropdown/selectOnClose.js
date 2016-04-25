@@ -32,21 +32,30 @@ define([
     }
 
     // Bugfix
-    // do not readd last item although it was removed by click on 'x'
-    if (event && $(event.srcElement).hasClass('select2-selection__choice__remove')) {
+    var event;
+    // do not readd last item although
+    // it was removed by click on 'x'
+    if (event && event.srcElement.classList
+      .contains('select2-selection__choice__remove'))
+    {
       this.trigger('blur', {
         data: data
       });
       return;
     }
 
-    // Do not readd item which just got edited by backspace
+    // Do not readd item which just
+    // got edited by backspace
     if (data && data.removedByChoice) {
       return;
     }
 
-    // ignore click outside of select2 and do not add selected item unless it's type text!
-    if (data && data.selected !== undefined && !data.selected && event.buttons !== undefined) {
+    // ignore click outside of select2 and
+    // do not add selected item unless
+    // it's type text!
+    if (data && data.selected !== undefined &&
+      !data.selected &&
+      event.buttons !== undefined) {
       return;
     }
     // End bugfix
