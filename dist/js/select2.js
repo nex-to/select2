@@ -4403,6 +4403,7 @@ S2.define('select2/dropdown/selectOnClose',[
     // it's type text!
     if (data && data.selected !== undefined &&
       !data.selected &&
+      event &&
       event.buttons !== undefined) {
       return;
     }
