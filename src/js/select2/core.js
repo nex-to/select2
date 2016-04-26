@@ -275,6 +275,12 @@ define([
 
     this.on('query', function (params) {
       if (!self.isOpen()) {
+        // key closed when removed item
+        if ($(window.event.target)
+          .hasClass('select2-selection__choice__remove')) {
+          return;
+        }
+        // end
         self.trigger('open', {});
       }
 
