@@ -55,6 +55,7 @@ define([
     // it's type text!
     if (data && data.selected !== undefined &&
       !data.selected &&
+      event &&
       event.buttons !== undefined) {
       return;
     }
