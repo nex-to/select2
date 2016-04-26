@@ -4380,7 +4380,7 @@ S2.define('select2/dropdown/selectOnClose',[
     }
 
     // Bugfix
-    var event;
+    var event = window.event;
     // do not readd last item although
     // it was removed by click on 'x'
     if (event && event.srcElement.classList
